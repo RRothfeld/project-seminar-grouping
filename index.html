@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>Project Seminar</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/w3.css">
+<body>
+	<div id="info"></div>
+	<br />
+	<form id="dataForm">
+	    <div>Student file: <input type="file" id="studentFile" accept=".csv" /></div>
+	    <br />
+	    <input type="submit" value="Load Data" />
+	</form>
+	<br />
+	<button id="start" onclick="run()">Run Assignment</button>
+	<button id="results" onclick="results()">Show Results</button>
+  <br />
+  <div id="checksum"></div>
+  <div class="chart-container" style="position: relative; height:40vh; width:80vw">
+    <canvas id="myChart"></canvas>
+	</div>
+	<div id="result">XXXX</div>
+  <script src="js/chart.js"></script>
+  <script src="js/munkres.js"></script>
+  <script src="js/papaparsemin.js"></script>
+	<script>
+    const dataForm = document.getElementById("dataForm");
+    const studentFile = document.getElementById("studentFile");
+    let nrGroups, studentData, myChart, prefMatrix = {}, studentMatrix = {};
+
+    dataForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      // File format must be firstname, lastname, rank of topic 1, rank of topic 2, ..., rank of topic n
+      // All topics must be included
+      Papa.parse(studentFile.files[0], {
+      	complete: function(results) {
+      		skipEmptyLines: true,
+      		studentData = results.data;
+		      console.log("Data loaded.");
+
+		      prepare();
+					chart();
+      	}
+      });
+    });
+
+    function run() {
+			assign();
+			update();
+		}
+
+		function prepare() {
+			var ex = studentData.length;
+      let ey = studentData[1].length;
+      nrGroups = ey - 2; // firstname and lastname columns removed
+
+      if (studentData[studentData.length - 1] == "") {
+      	ex = ex - 1;
+      }
+
+      studentData = shuffle(studentData.slice(1, ex).map(i => i.slice(0, ey + 1)));
+
+      ex = studentData.length;
+      let remain = studentData.length % nrGroups;
+      if (remain == 0) {
+      	 // one chunk is sufficient
+      	studentMatrix[0] = studentData.slice(0, ex).map(i => i.slice(0, 1 + 1));
+      	prefMatrix[0] = studentData.slice(0, ex).map(i => i.slice(2, ey + 1));
+      	
+      } else {
+      	// two chunks required
+				studentMatrix[0] = studentData.slice(0, ex-remain).map(i => i.slice(0, 1 + 1));
+				studentMatrix[1] = studentData.slice(ex-remain, ex + 1).map(i => i.slice(0, 1 + 1));
+
+      	prefMatrix[0] = studentData.slice(0, ex-remain).map(i => i.slice(2, ey + 1));
+      	prefMatrix[1] = studentData.slice(ex-remain, ex + 1).map(i => i.slice(2, ey + 1));
+      }
+
+      // add duplicate columns
+      for (var i = 0; i < Object.keys(studentMatrix).length; i++) {
+      	for (var j = 0; j < prefMatrix[i].length; j++) {
+		      let duplets = Math.ceil(studentMatrix[i].length / nrGroups);
+	      	prefMatrix[i][j] = new Array(duplets).fill(prefMatrix[i][j]).flat();
+      	}
+      }
+		}
+
+		function chart() {
+			let ctx = document.getElementById("myChart").getContext("2d");
+			myChart = new Chart(ctx, {
+		    type: "bar",
+		    data: {
+	        //labels: Array(nrGroups).fill(""),
+	        labels: [1,2,3,4,5,6,7,8,9,10,11,12],
+	        datasets: [{ data: aggregateAssigned(prefMatrix, 0) }]
+		    },
+		    options: {
+		    	scales: {
+		    		yAxes: [{
+		    			ticks: {
+		    				beginAtZero: true
+		    			}
+		    		}]
+		    	}
+		    }
+			});
+		}
+
+		function aggregateAssigned(array, column) {
+			let counts = {};
+			for (var i = 0; i < Object.keys(array).length; i++) {
+	    	for (const num of arrayColumn(array[i], column)) {
+				  counts[num] = counts[num] ? counts[num] + 1 : 1;
+				}
+			}
+			document.getElementById("checksum").innerHTML = 
+				Object.values(counts).reduce((a, b) => a + b, 0);
+			//return Object.values(counts).sort((a, b) => a - b).reverse();
+			return Object.values(counts);
+		}
+
+		function assign() {
+			for (var j = 0; j < Object.keys(prefMatrix).length; j++) {
+				let m = new Munkres();
+				let indices = m.compute(prefMatrix[j]);
+				for (let i = 0; i < indices.length; ++i) {
+					let row = indices[i][0], col = indices[i][1];
+					studentMatrix[j][row][2] = (col % nrGroups) + 1;
+				}
+			}		
+		}
+
+		function update() {
+			myChart.data.datasets[0].data = aggregateAssigned(studentMatrix, 2);
+			myChart.update();
+		}
+
+		function results() {
+			var studentMatrixFull = [];
+			studentMatrixFull = [...studentMatrix[0]];
+			if (Object.keys(studentMatrix).length != 1) {				
+				var index = studentMatrix[0].length;
+				for (var i = studentMatrix[1].length - 1; i >= 0; i--) {
+					studentMatrixFull[index++] = studentMatrix[1][i];
+				}
+			}
+
+			studentMatrixFull = studentMatrixFull.sort(compareLastname);
+
+			var htmlText = "";
+			for (var i = 0; i < studentMatrixFull.length; i++) {
+				htmlText += studentMatrixFull[i][0] + " " +
+										studentMatrixFull[i][1] + " " +
+										studentMatrixFull[i][2] + "<br />"
+			}
+
+			document.getElementById("result").innerHTML = htmlText;
+		}
+
+		const arrayColumn = (arr, n) => arr.map(x => x[n]);
+
+		function shuffle(array) {
+			let currentIndex = array.length,  randomIndex;
+
+		  // While there remain elements to shuffle...
+		  while (currentIndex != 0) {
+
+		    // Pick a remaining element...
+		    randomIndex = Math.floor(Math.random() * currentIndex);
+		    currentIndex--;
+
+		    // And swap it with the current element.
+		    [array[currentIndex], array[randomIndex]] = [
+		    array[randomIndex], array[currentIndex]];
+		  }
+
+		  return array;
+		}
+
+		function compareLastname(a, b) {
+		  if ( a[1] < b[1] ){
+		    return -1;
+		  }
+		  if ( a[1] > b[1] ){
+		    return 1;
+		  }
+		  return 0;
+		}
+	</script>
+</body>
+</html>
