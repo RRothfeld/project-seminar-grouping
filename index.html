@@ -193,7 +193,7 @@
 	        labels: Array.from({length: nrGroups}, (_, i) => i + 1),
 	        datasets: [{
 	        	label: "First Choice",
-	        	data: [nrGroups].concat(Array(nrGroups-1).fill(0)),
+	        	data: [studentData.length].concat(Array(studentData.length-1).fill(0)),
 	        	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.75)")
 	        }]
 		    },
@@ -204,7 +204,7 @@
 					xAxes: [{
 						scaleLabel: {
 							display: true,
-							labelString: "Choice"
+							labelString: "Satisfied Choice"
 						}
 					}],
 					yAxes: [{
@@ -269,13 +269,13 @@
 			document.getElementById("charts").style.display = "initial";
 			document.getElementById("tables").style.display = "none";
 			leftChart.data.datasets[1] = {
-      	label: "Assignment",
+      	label: "Assigned Choice",
       	data: aggregateAssigned(studentMatrix, 2),
       	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.35)")
       };
 
 			rightChart.data.datasets[1] = {
-      	label: "Assignment",
+      	label: "Assigned Choice",
       	data: aggregateAssigned(assignedChoices, 0),
       	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.35)")
       };
