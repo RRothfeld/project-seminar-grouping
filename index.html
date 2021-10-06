@@ -90,20 +90,38 @@
 
     dataForm.addEventListener("submit", function (e) {
       e.preventDefault();
-
-      // File format must be firstname, lastname, rank of topic 1, rank of topic 2, ..., rank of topic n
-      // All topics must be included
       Papa.parse(studentFile.files[0], {
       	complete: function(results) {
       		skipEmptyLines: true,
-      		studentData = results.data;
-
-		      prepare();
-					chart();
-					document.getElementById("start").disabled = false;
+      		inputData = results.data;
+      		convertData();
       	}
       });
     });
+
+    function convertData() {
+  		//... convert data to proper format
+  		// input: FirstName,LastName,FirstChoice,SecondChoice,ThirdChoice, ...
+  		// output: FirstName,LastName,RankOfFirstTopic,RankOfSecondTopic
+  		// (only the colum order and data matters, headers are ignored)
+  		for (var i = 1; i < inputData.length; i++) { // skip header
+  			for (var j = 2; j < inputData[i].length; j++) { // skip names
+  				inputData[i][j] = inputData[i][j].match(/^\d+|\d+\b|\d+(?=\w)/g)[0];
+  			}
+  		}
+
+  		studentData = JSON.parse(JSON.stringify(inputData));
+  		for (var i = 1; i < inputData.length; i++) { // skip header
+  			var choiceIndex = 1; // i.e. start with "first choice"
+  			for (var j = 2; j < inputData[i].length; j++) { // skip names
+  				studentData[i][parseInt(inputData[i][j]) + 2 - 1] = "" + choiceIndex++; // value must be string, otherwise later on, the aggregation fails
+  			}
+  		}
+
+      prepare();
+			chart();
+			document.getElementById("start").disabled = false;
+    }
 
     function run() {
 			assign();
@@ -116,16 +134,21 @@
       let ey = studentData[1].length;
       nrGroups = ey - 2; // firstname and lastname columns removed
 
-      if (studentData[studentData.length - 1] == "") {
-      	ex = ex - 1;
+      // Remove empty lines at end of file
+      for (var i = studentData.length - 1; i >= 0; i--) {
+      	if (studentData[i] == "") {
+	      	ex -= 1;
+	      } else {
+	      	break;
+	      }
       }
-
+      
       studentData = studentData.slice(1, ex).map(i => i.slice(0, ey + 1));
       //studentData = shuffle(studentData.slice(1, ex).map(i => i.slice(0, ey + 1)));
 
       ex = studentData.length;
       let remain = studentData.length % nrGroups;
-      if (remain == 0) {
+      if (remain == 0 || studentData.length < nrGroups) {
       	 // one chunk is sufficient
       	studentMatrix[0] = studentData.slice(0, ex).map(i => i.slice(0, 1 + 1));
       	prefMatrix[0] = studentData.slice(0, ex).map(i => i.slice(2, ey + 1));
