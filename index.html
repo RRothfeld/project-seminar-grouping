@@ -143,13 +143,14 @@
 	      }
       }
       
-      studentData = studentData.slice(1, ex).map(i => i.slice(0, ey + 1));
-      //studentData = shuffle(studentData.slice(1, ex).map(i => i.slice(0, ey + 1)));
+      // no-shuffle or shuffle; shuffle for fairness
+      //studentData = studentData.slice(1, ex).map(i => i.slice(0, ey + 1));
+      studentData = shuffle(studentData.slice(1, ex).map(i => i.slice(0, ey + 1)));
 
       ex = studentData.length;
       let remain = studentData.length % nrGroups;
       if (remain == 0 || studentData.length < nrGroups) {
-      	 // one chunk is sufficient
+      	// one chunk is sufficient
       	studentMatrix[0] = studentData.slice(0, ex).map(i => i.slice(0, 1 + 1));
       	prefMatrix[0] = studentData.slice(0, ex).map(i => i.slice(2, ey + 1));
       	
