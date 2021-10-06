@@ -1,33 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
-<title>Project Seminar</title>
+<title>Project Seminar Group Automator</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/w3.css">
+<link rel="stylesheet" type="text/css" href="css/own.css">
 <body>
-	<div id="info"></div>
-	<br />
-	<form id="dataForm">
-	    <div>Student file: <input type="file" id="studentFile" accept=".csv" /></div>
-	    <br />
-	    <input type="submit" value="Load Data" />
-	</form>
-	<br />
-	<button id="start" onclick="run()">Run Assignment</button>
-	<button id="results" onclick="results()">Show Results</button>
-  <br />
-  <div id="checksum"></div>
-  <div class="chart-container" style="position: relative; height:40vh; width:80vw">
-    <canvas id="myChart"></canvas>
+	<!-- Content -->
+	<div class="w3-top w3-container">
+		<div class="w3-row w3-padding">
+    	<div class="w3-col s2">
+    		<form id="dataForm">
+		    	<input class="w3-button w3-grey w3-round" type="submit" value="Load Data" />
+		    	<input type="file" id="studentFile" accept=".csv" />
+				</form>
+    	</div>
+    	<div class="w3-col s2">
+    		<button disabled class="w3-button w3-grey w3-round" id="start" onclick="run()">Asign Students</button>
+  		</div>
+    	<div class="w3-col s2">
+    		<button disabled class="w3-button w3-grey w3-round" id="results" onclick="results()">Show Groups</button>
+  		</div>
+    	<div class="w3-col s2">
+    		<button disabled class="w3-button w3-grey w3-round" id="download" onclick="download()">Download CSV</button>
+  		</div>
+    	<div class="w3-col s2">
+    		<div id="checksum" class="light">Check</div>
+  		</div>
+    	<div class="w3-col s2 w3-right">
+    		<img src="img/logo.png">
+  		</div>
+    </div>
+		
+		<div class="w3-container">
+			<div class="w3-row w3-padding">
+				<div class="w3-col w3-half">
+					<div class="chart-container" style="position: relative; height:40vh; width:80vw">
+						<canvas id="myChart"></canvas>
+					</div>
+				</div>
+				<div class="w3-col w3-half">
+					<div class="chart-container" style="position: relative; height:40vh; width:80vw">
+						<canvas id="myChart"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		
+	  
+	  
+		<div id="result"></div>
 	</div>
-	<div id="result">XXXX</div>
+	<!-- Scripts -->
   <script src="js/chart.js"></script>
   <script src="js/munkres.js"></script>
   <script src="js/papaparsemin.js"></script>
 	<script>
     const dataForm = document.getElementById("dataForm");
     const studentFile = document.getElementById("studentFile");
-    let nrGroups, studentData, myChart, prefMatrix = {}, studentMatrix = {};
+    let nrGroups, studentData, myChart, prefMatrix = {}, studentMatrix = {}, fullResult;
 
     dataForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -42,6 +74,8 @@
 
 		      prepare();
 					chart();
+
+					document.getElementById("start").disabled = false;
       	}
       });
     });
@@ -49,6 +83,7 @@
     function run() {
 			assign();
 			update();
+			document.getElementById("start").disabled = false;
 		}
 
 		function prepare() {
@@ -92,8 +127,7 @@
 			myChart = new Chart(ctx, {
 		    type: "bar",
 		    data: {
-	        //labels: Array(nrGroups).fill(""),
-	        labels: [1,2,3,4,5,6,7,8,9,10,11,12],
+	        labels: Array(nrGroups).fill(""), // anonymous groups
 	        datasets: [{ data: aggregateAssigned(prefMatrix, 0) }]
 		    },
 		    options: {
@@ -117,8 +151,7 @@
 			}
 			document.getElementById("checksum").innerHTML = 
 				Object.values(counts).reduce((a, b) => a + b, 0);
-			//return Object.values(counts).sort((a, b) => a - b).reverse();
-			return Object.values(counts);
+			return Object.values(counts).sort((a, b) => a - b).reverse();
 		}
 
 		function assign() {
@@ -129,7 +162,9 @@
 					let row = indices[i][0], col = indices[i][1];
 					studentMatrix[j][row][2] = (col % nrGroups) + 1;
 				}
-			}		
+			}
+			document.getElementById("results").disabled = false;
+			document.getElementById("download").disabled = false;	
 		}
 
 		function update() {
@@ -138,25 +173,37 @@
 		}
 
 		function results() {
-			var studentMatrixFull = [];
-			studentMatrixFull = [...studentMatrix[0]];
+			fullResult = [...studentMatrix[0]];
 			if (Object.keys(studentMatrix).length != 1) {				
 				var index = studentMatrix[0].length;
 				for (var i = studentMatrix[1].length - 1; i >= 0; i--) {
-					studentMatrixFull[index++] = studentMatrix[1][i];
+					fullResult[index++] = studentMatrix[1][i];
 				}
 			}
 
-			studentMatrixFull = studentMatrixFull.sort(compareLastname);
+			fullResult = fullResult.sort(compareLastname);
 
 			var htmlText = "";
-			for (var i = 0; i < studentMatrixFull.length; i++) {
-				htmlText += studentMatrixFull[i][0] + " " +
-										studentMatrixFull[i][1] + " " +
-										studentMatrixFull[i][2] + "<br />"
+			for (var i = 0; i < fullResult.length; i++) {
+				htmlText += fullResult[i][0] + " " +
+										fullResult[i][1] + " " +
+										fullResult[i][2] + "<br />"
 			}
 
 			document.getElementById("result").innerHTML = htmlText;
+		}
+
+		function download() {
+			var csv = Papa.unparse(fullResult);
+
+			var element = document.createElement("a");
+		  element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(csv));
+		  element.setAttribute("download", "student-groups.csv");
+
+		  element.style.display = "none";
+		  document.body.appendChild(element);
+		  element.click();
+		  document.body.removeChild(element);
 		}
 
 		const arrayColumn = (arr, n) => arr.map(x => x[n]);
