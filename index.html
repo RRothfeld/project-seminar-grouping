@@ -7,51 +7,78 @@
 <link rel="stylesheet" type="text/css" href="css/own.css">
 <body>
 	<!-- Content -->
-	<div class="w3-top w3-container">
+	<div class="w3-container full-height">
 		<div class="w3-row w3-padding">
-    	<div class="w3-col s2">
+    	<div class="w3-col s2 w3-padding">
     		<form id="dataForm">
-		    	<input class="w3-button w3-grey w3-round" type="submit" value="Load Data" />
-		    	<input type="file" id="studentFile" accept=".csv" />
+		    	<input class="w3-button tum w3-round" type="submit" value="Load Data" />
+		    	<input class="" type="file" id="studentFile" accept=".csv" />
 				</form>
     	</div>
-    	<div class="w3-col s2">
-    		<button disabled class="w3-button w3-grey w3-round" id="start" onclick="run()">Asign Students</button>
+    	<div class="w3-col s2 w3-padding">
+    		<button disabled class="w3-button tum w3-round" id="start" onclick="run()">Assign Students</button>
   		</div>
-    	<div class="w3-col s2">
-    		<button disabled class="w3-button w3-grey w3-round" id="results" onclick="results()">Show Groups</button>
+    	<div class="w3-col s2 w3-padding">
+    		<button disabled class="w3-button tum w3-round" id="results" onclick="results()">Show Groups</button>
   		</div>
-    	<div class="w3-col s2">
-    		<button disabled class="w3-button w3-grey w3-round" id="download" onclick="download()">Download CSV</button>
+    	<div class="w3-col s2 w3-padding">
+    		<button disabled class="w3-button tum w3-round" id="download" onclick="download()">Download CSV</button>
   		</div>
-    	<div class="w3-col s2">
-    		<div id="checksum" class="light">Check</div>
+    	<div class="w3-col s2 w3-padding">
+    		<div class="light rightAlign">Students: <span id="checksum">-</span></div>
   		</div>
-    	<div class="w3-col s2 w3-right">
+    	<div class="w3-col s2 w3-padding rightAlign">
     		<img src="img/logo.png">
   		</div>
     </div>
 		
-		<div class="w3-container">
-			<div class="w3-row w3-padding">
-				<div class="w3-col w3-half">
-					<div class="chart-container" style="position: relative; height:40vh; width:80vw">
-						<canvas id="myChart"></canvas>
+		<div class="w3-container full-height" id="charts">
+			<div class="w3-row w3-padding full-height">
+				<div class="w3-col w3-half full-height">
+					<div class="chart-container full-height" id="leftCanvas">
+						<canvas id="leftChart"></canvas>
 					</div>
 				</div>
-				<div class="w3-col w3-half">
-					<div class="chart-container" style="position: relative; height:40vh; width:80vw">
-						<canvas id="myChart"></canvas>
+				<div class="w3-col w3-half full-height">
+					<div class="chart-container full-height">
+						<canvas id="rightChart"></canvas>
 					</div>
 				</div>
 			</div>
 		</div>
 		
-		
-	  
-	  
-		<div id="result"></div>
-	</div>
+
+		<div class="w3-container" id="tables">
+			<div class="w3-row w3-padding">
+				<div class="w3-col w3-third w3-padding">
+					<table class="w3-table w3-striped" id="leftTable">
+						<tr>
+						  <th>First Name</th>
+						  <th>Last Name</th>
+						  <th>Group</th>
+						</tr>
+					</table>
+				</div>
+				<div class="w3-col w3-third w3-padding">
+					<table class="w3-table w3-striped" id="centerTable">
+						<tr>
+						  <th>First Name</th>
+						  <th>Last Name</th>
+						  <th>Group</th>
+						</tr>
+					</table>
+				</div>
+				<div class="w3-col w3-third w3-padding">
+					<table class="w3-table w3-striped" id="rightTable">
+						<tr>
+						  <th>First Name</th>
+						  <th>Last Name</th>
+						  <th>Group</th>
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
 	<!-- Scripts -->
   <script src="js/chart.js"></script>
   <script src="js/munkres.js"></script>
@@ -59,7 +86,7 @@
 	<script>
     const dataForm = document.getElementById("dataForm");
     const studentFile = document.getElementById("studentFile");
-    let nrGroups, studentData, myChart, prefMatrix = {}, studentMatrix = {}, fullResult;
+    let nrGroups, studentData, leftChart, rightChart, prefMatrix = {}, studentMatrix = {}, fullResult, assignedChoices = {0:[]}, resultsCalculated = false;
 
     dataForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -70,11 +97,9 @@
       	complete: function(results) {
       		skipEmptyLines: true,
       		studentData = results.data;
-		      console.log("Data loaded.");
 
 		      prepare();
 					chart();
-
 					document.getElementById("start").disabled = false;
       	}
       });
@@ -95,7 +120,8 @@
       	ex = ex - 1;
       }
 
-      studentData = shuffle(studentData.slice(1, ex).map(i => i.slice(0, ey + 1)));
+      studentData = studentData.slice(1, ex).map(i => i.slice(0, ey + 1));
+      //studentData = shuffle(studentData.slice(1, ex).map(i => i.slice(0, ey + 1)));
 
       ex = studentData.length;
       let remain = studentData.length % nrGroups;
@@ -123,22 +149,75 @@
 		}
 
 		function chart() {
-			let ctx = document.getElementById("myChart").getContext("2d");
-			myChart = new Chart(ctx, {
+			document.getElementById("charts").style.display = "initial";
+			document.getElementById("tables").style.display = "none";
+
+			let ctx = document.getElementById("leftChart").getContext("2d");
+			leftChart = new Chart(ctx, {
 		    type: "bar",
 		    data: {
 	        labels: Array(nrGroups).fill(""), // anonymous groups
-	        datasets: [{ data: aggregateAssigned(prefMatrix, 0) }]
+	        datasets: [{
+	        	label: "First Choice",
+	        	data: aggregateIndexOf(prefMatrix, 1),
+	        	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.75)")
+	        }]
 		    },
 		    options: {
-		    	scales: {
-		    		yAxes: [{
-		    			ticks: {
-		    				beginAtZero: true
-		    			}
-		    		}]
-		    	}
-		    }
+				responsive: true,
+				maintainAspectRatio: false,
+				scales: {
+					xAxes: [{
+						scaleLabel: {
+							display: true,
+							labelString: "Groups (Hidden, Sorted by Size)"
+						}
+					}],
+					yAxes: [{
+						scaleLabel: {
+							display: true,
+							labelString: "Group Size"
+						},
+						ticks: {
+							beginAtZero: true
+						}
+					}]
+				}
+			}
+			});
+
+			let cty = document.getElementById("rightChart").getContext("2d");
+			rightChart = new Chart(cty, {
+		    type: "bar",
+		    data: {
+	        labels: Array.from({length: nrGroups}, (_, i) => i + 1),
+	        datasets: [{
+	        	label: "First Choice",
+	        	data: [nrGroups].concat(Array(nrGroups-1).fill(0)),
+	        	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.75)")
+	        }]
+		    },
+		    options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				scales: {
+					xAxes: [{
+						scaleLabel: {
+							display: true,
+							labelString: "Choice"
+						}
+					}],
+					yAxes: [{
+						scaleLabel: {
+							display: true,
+							labelString: "Frequency of Satisfied Choices"
+						},
+						ticks: {
+							beginAtZero: true
+						}
+					}]
+				}
+			}
 			});
 		}
 
@@ -154,43 +233,88 @@
 			return Object.values(counts).sort((a, b) => a - b).reverse();
 		}
 
+		function aggregateIndexOf(array, k) {
+			let counts = {};
+			for (var i = 0; i < Object.keys(array).length; i++) {
+				var indices = [];
+
+				for (const row of array[i]) {
+					indices.push(getIndexOfK(row, 1));
+				}
+
+	    	for (const num of indices) {
+				  counts[num] = counts[num] ? counts[num] + 1 : 1;
+				}
+			}
+			document.getElementById("checksum").innerHTML = 
+				Object.values(counts).reduce((a, b) => a + b, 0);
+			return Object.values(counts).sort((a, b) => a - b).reverse();
+		}
+
 		function assign() {
+			assignedChoices[0] = [];
 			for (var j = 0; j < Object.keys(prefMatrix).length; j++) {
 				let m = new Munkres();
 				let indices = m.compute(prefMatrix[j]);
 				for (let i = 0; i < indices.length; ++i) {
 					let row = indices[i][0], col = indices[i][1];
 					studentMatrix[j][row][2] = (col % nrGroups) + 1;
+					assignedChoices[0].push(prefMatrix[j][row][col]);
 				}
 			}
-			document.getElementById("results").disabled = false;
-			document.getElementById("download").disabled = false;	
+			document.getElementById("results").disabled = false;	
 		}
 
 		function update() {
-			myChart.data.datasets[0].data = aggregateAssigned(studentMatrix, 2);
-			myChart.update();
+			document.getElementById("charts").style.display = "initial";
+			document.getElementById("tables").style.display = "none";
+			leftChart.data.datasets[1] = {
+      	label: "Assignment",
+      	data: aggregateAssigned(studentMatrix, 2),
+      	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.35)")
+      };
+
+			rightChart.data.datasets[1] = {
+      	label: "Assignment",
+      	data: aggregateAssigned(assignedChoices, 0),
+      	backgroundColor: Array(nrGroups).fill("rgba(0, 101, 189, 0.35)")
+      };
+
+			rightChart.update();
+	    leftChart.update();
 		}
 
 		function results() {
-			fullResult = [...studentMatrix[0]];
-			if (Object.keys(studentMatrix).length != 1) {				
-				var index = studentMatrix[0].length;
-				for (var i = studentMatrix[1].length - 1; i >= 0; i--) {
-					fullResult[index++] = studentMatrix[1][i];
+			document.getElementById("charts").style.display = "none";
+			document.getElementById("tables").style.display = "initial";
+
+			if (!resultsCalculated) {
+				fullResult = [...studentMatrix[0]];
+				if (Object.keys(studentMatrix).length != 1) {				
+					var index = studentMatrix[0].length;
+					for (var i = studentMatrix[1].length - 1; i >= 0; i--) {
+						fullResult[index++] = studentMatrix[1][i];
+					}
 				}
+
+				fullResult = fullResult.sort(compareLastname);
+
+				let tableIds = ["leftTable", "centerTable", "rightTable"];
+				for (var i = 0; i < fullResult.length; i++) {
+					var curId = Math.floor(i / Math.ceil(fullResult.length / 3));
+					var table = document.getElementById(tableIds[curId]);
+					var row = table.insertRow();
+					var cell1 = row.insertCell();
+					var cell2 = row.insertCell();
+					var cell3 = row.insertCell();
+					cell1.innerHTML = fullResult[i][0];
+					cell2.innerHTML = fullResult[i][1];
+					cell3.innerHTML = fullResult[i][2];
+				}
+
+				document.getElementById("download").disabled = false;
+				resultsCalculated = true;
 			}
-
-			fullResult = fullResult.sort(compareLastname);
-
-			var htmlText = "";
-			for (var i = 0; i < fullResult.length; i++) {
-				htmlText += fullResult[i][0] + " " +
-										fullResult[i][1] + " " +
-										fullResult[i][2] + "<br />"
-			}
-
-			document.getElementById("result").innerHTML = htmlText;
 		}
 
 		function download() {
@@ -234,6 +358,14 @@
 		    return 1;
 		  }
 		  return 0;
+		}
+
+		function getIndexOfK(arr, k) {
+		  for (var i = 0; i < arr.length; i++) {
+		    if (arr[i] == k) {
+		      return i;
+		    }
+		  }
 		}
 	</script>
 </body>

@@ -1,4 +1,39 @@
+html, body {
+  font-family: Arial, sans-serif;
+  height: 100%;
+}
+
 .light {
   color: lightgray;
   text-align: center;
+}
+
+.full-height {
+  height: 92%;
+}
+
+#charts {
+  margin-top: 50px;
+}
+
+.tum {
+  color: white;
+  font-weight: bold;
+  background-color: #0065BD;
+}
+
+#tables {
+  display: none;
+}
+
+.rightAlign {
+  text-align: right;
+}
+
+#leftChart {
+  padding-right: 10%;
+}
+
+#rightChart {
+  padding-left: 10%;
 }
